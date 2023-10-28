@@ -1,0 +1,320 @@
+---
+title: "Multinomial multilevel logistic regression"
+author: "Anton Kalén"
+date: today
+format:
+  html:
+    self-contained: true
+    code-fold: true
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, error = FALSE)
+options(scipen=999)
+
+# Load libraries
+
+library(here)
+library(haven)
+library(dplyr)
+library(brms)
+# library(mclogit)
+library(tidyr)
+library(tidybayes)
+
+#set priors
+priors <- c(
+  prior(normal(0,2.5), class = "b", dpar = "muATMT"),
+  prior(normal(0,2.5), class = "b", dpar = "muMTAT")
+)
+
+# Load data
+data <- read_sav(here("data", "Datasett Paper 2 Effekt logr til Andreas3 No change.sav"))
+
+data_clean <- data %>% 
+  mutate(
+    across(c(kjonn, Etn, Tsent), as_factor),
+    across(starts_with("Endring"), haven::as_factor),
+    across(contains("4kat"), \(x) relevel(x, ref = "MT - MT")),
+    across(starts_with("3kat"), \(x) relevel(x, ref = "No change")),
+    across(ses_fr:ses_mr, \(x) x - 3),
+    alder = scale(alder),
+    Int_arm_2r = factor(Int_arm_2r, levels = c(2,1), labels = c("Kontroll", "Intervensjon"))
+  ) %>% 
+  drop_na(kjonn, alder, Etn, ses_fr, ses_mr, Int_arm_2r)
+
+
+```
+
+# Method
+
+`alder` is standardised, meaning that the odds-ratio is the change in odds for one standard deviation difference in age.
+Intercepts are therefore odds-ratios at mean age.
+
+`ses_fr` and `ses_mr` is treated as continous and centered on the middle category (3 of 5), meaning that the odds ratio is the change for moving up or down one category. 
+Intercepts are therefore odds-ratio for category 3 ("Fagskole").
+
+We use a categorical multilevel regression to model the odds-ratio of pertaining to a group other than the control group. The `MT-MT` outcome is used as reference level.
+Cases containing missing data are deleted listwise for each model, meaning that the number of cases will vary between models.
+The results are presented as median log-odds ratio with 95% credibility intervals, given by the highest-density interval.
+The interpretation of the CI is that there is a 95% probability that the odds-ratio falls in this range.
+The models are fitted in STAN through the `brms` package using 4 chains, 2000 warm-up and 2000 sampling iterations.
+
+# Endring_s7_3kat
+
+```{r, include=FALSE}
+data_Endring_s7_3kat <- data_clean %>% 
+  drop_na(Endring_s7_3kat)
+
+model_Endring_s7_3kat <- brm(
+  Endring_s7_3kat ~ kjonn + alder + Etn + ses_fr + ses_mr + Int_arm_2r + Tsent + (1|Idsk),
+  family = categorical(),
+  data = data_Endring_s7_3kat,
+  iter = 4000,
+  chains = 4,
+  cores = 4,
+  prior = priors,
+  control = list(adapt_delta = .9),
+  backend = "cmdstanr",
+  file = here("models", "model_Endring_s7_3kat.rds")
+)
+```
+
+Fixed effects: 
+
+```{r}
+model_Endring_s7_3kat %>% 
+  gather_draws(`b.*`, regex = TRUE) %>% 
+  mutate(.value = exp(.value)) %>% 
+  median_hdci() %>% 
+  select(.variable:.upper) %>% 
+  knitr::kable(digits = 2)
+```
+
+Random effects:
+
+```{r}
+model_Endring_s7_3kat %>% 
+  gather_draws(`sd.*`, regex = TRUE) %>% 
+  median_hdci() %>% 
+  select(.variable:.upper) %>% 
+  knitr::kable(digits = 2)
+```
+
+# Endring_s8_3kat
+
+```{r, include=FALSE}
+data_Endring_s8_3kat <- data_clean %>% 
+  drop_na(Endring_s8_3kat)
+
+model_Endring_s8_3kat <- brm(
+  Endring_s8_3kat ~ 1 + kjonn + alder + Etn + ses_fr + ses_mr + Int_arm_2r + Tsent + (1|Idsk),
+  family = categorical(),
+  data = data_Endring_s8_3kat,
+  iter = 4000,
+  chains = 4,
+  cores = 4,
+  prior = priors,
+  control = list(adapt_delta = .9),
+  backend = "cmdstanr",
+  file = here("models", "model_Endring_s8_3kat.rds")
+)
+```
+
+Fixed effects: 
+
+```{r}
+model_Endring_s8_3kat %>% 
+  gather_draws(`b.*`, regex = TRUE) %>% 
+  mutate(.value = exp(.value)) %>% 
+  median_hdci() %>% 
+  select(.variable:.upper) %>% 
+  knitr::kable(digits = 2)
+```
+
+Random effects:
+
+```{r}
+model_Endring_s8_3kat %>% 
+  gather_draws(`sd.*`, regex = TRUE) %>% 
+  median_hdci() %>% 
+  select(.variable:.upper) %>% 
+  knitr::kable(digits = 2)
+```
+
+
+# Endring_s9_3kat
+
+```{r, include=FALSE}
+data_Endring_s9_3kat <- data_clean %>% 
+  drop_na(Endring_s9_3kat)
+
+model_Endring_s9_3kat <- brm(
+  Endring_s9_3kat ~ 1 + kjonn + alder + Etn + ses_fr + ses_mr + Int_arm_2r + Tsent + (1|Idsk),
+  family = categorical(),
+  data = data_Endring_s9_3kat,
+  iter = 4000,
+  prior = priors,
+  control = list(adapt_delta = .9),
+  chains = 4,
+  cores = 4,
+  backend = "cmdstanr",
+  file = here("models", "model_Endring_s9_3kat.rds")
+)
+```
+
+
+Fixed effects: 
+
+```{r}
+model_Endring_s9_3kat %>% 
+  gather_draws(`b.*`, regex = TRUE) %>% 
+  mutate(.value = exp(.value)) %>% 
+  median_hdci() %>% 
+  select(.variable:.upper) %>% 
+  knitr::kable(digits = 2)
+```
+
+Random effects:
+
+```{r}
+model_Endring_s9_3kat %>% 
+  gather_draws(`sd.*`, regex = TRUE) %>% 
+  median_hdci() %>% 
+  select(.variable:.upper) %>% 
+  knitr::kable(digits = 2)
+```
+
+
+# Endring_s10_3kat
+
+```{r, include=FALSE}
+data_Endring_s10_3kat <- data_clean %>% 
+  drop_na(Endring_s10_3kat)
+
+model_Endring_s10_3kat <- brm(
+  Endring_s10_3kat ~ 1 + kjonn + alder + Etn + ses_fr + ses_mr + Int_arm_2r + Tsent + (1|Idsk),
+  family = categorical(),
+  data = data_Endring_s10_3kat,
+  iter = 4000,
+  chains = 4,
+  cores = 4,
+  prior = priors,
+  control = list(adapt_delta = .95),
+  backend = "cmdstanr",
+  file = here("models", "model_Endring_s10_3kat.rds")
+)
+```
+
+
+Fixed effects: 
+
+```{r}
+model_Endring_s10_3kat %>% 
+  gather_draws(`b.*`, regex = TRUE) %>% 
+  mutate(.value = exp(.value)) %>% 
+  median_hdci() %>% 
+  select(.variable:.upper) %>% 
+  knitr::kable(digits = 2)
+```
+
+Random effects:
+
+```{r}
+model_Endring_s10_3kat %>% 
+  gather_draws(`sd.*`, regex = TRUE) %>% 
+  median_hdci() %>% 
+  select(.variable:.upper) %>% 
+  knitr::kable(digits = 2)
+```
+
+# Multivariate model
+
+```{r, include=FALSE}
+data_Endring <- data_clean %>% 
+  drop_na(starts_with("Endring"))
+
+model_Endring <- brm(
+  bf(
+    mvbind(
+      Endring_s7_3kat, 
+      Endring_s8_3kat, 
+      Endring_s9_3kat, 
+      Endring_s10_3kat
+    ) ~ 1 + kjonn + alder + Etn + ses_fr + ses_mr + Int_arm_2r + Tsent + (1|p|Idsk)
+  ),
+  family = categorical(),
+  data = data_Endring,
+  iter = 4000,
+  chains = 4,
+  cores = 4,
+  prior = prior(normal(0,2.5), class = "b"),
+  control = list(adapt_delta = .95),
+  backend = "cmdstanr",
+  file = here("models", "model_Endring.rds")
+)
+
+```
+
+```{r}
+model_Endring %>% 
+  gather_draws(`b.*`, regex = TRUE) %>% 
+  mutate(.value = exp(.value)) %>% 
+  median_hdci() %>% 
+  separate(.variable, into = c("b", "mu", "Endring", "var"), sep = "_") |> 
+  arrange(Endring) |> 
+  select(mu:.upper) %>% 
+  knitr::kable(digits = 2)
+```
+
+Random effects:
+
+```{r}
+model_Endring %>% 
+  gather_draws(`sd.*`, regex = TRUE) %>% 
+  median_hdci() %>% 
+  separate(.variable, into = c("sd", "ldsk", "empty", "mu", "Endring", "var"), sep = "_") |> 
+  select(mu, Endring, .value:.upper) %>% 
+  knitr::kable(digits = 2)
+```
+
+# Diagnostics
+
+```{r}
+tibble(
+  models = c(
+    "model_Endring_s7_3kat",
+    "model_Endring_s8_3kat",
+    "model_Endring_s9_3kat",
+    "model_Endring_s10_3kat",
+    "model_Endring"
+  ),
+  divergent = c(
+    nuts_params(model_Endring_s7_3kat) |> filter(Parameter == "divergent__", Value == 1) |> nrow(),
+    nuts_params(model_Endring_s8_3kat) |> filter(Parameter == "divergent__", Value == 1) |> nrow(),
+    nuts_params(model_Endring_s9_3kat) |> filter(Parameter == "divergent__", Value == 1) |> nrow(),
+    nuts_params(model_Endring_s10_3kat) |> filter(Parameter == "divergent__", Value == 1) |> nrow(),
+    nuts_params(model_Endring) |> filter(Parameter == "divergent__", Value == 1) |> nrow()
+  ),
+  max_rhat = c(
+    max(rhat(model_Endring_s7_3kat)),
+    max(rhat(model_Endring_s8_3kat)),
+    max(rhat(model_Endring_s9_3kat)),
+    max(rhat(model_Endring_s10_3kat)),
+    max(rhat(model_Endring))
+  ),
+ min_neff = c(
+   min(neff_ratio(model_Endring_s7_3kat)),
+   min(neff_ratio(model_Endring_s8_3kat)),
+   min(neff_ratio(model_Endring_s9_3kat)),
+   min(neff_ratio(model_Endring_s10_3kat)),
+   min(neff_ratio(model_Endring))
+ ) 
+) |> 
+  knitr::kable(digits = 4)
+
+
+```
+
